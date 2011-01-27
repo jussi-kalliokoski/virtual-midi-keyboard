@@ -43,6 +43,7 @@ var	isKeyFlat	= [false, true, false, true, false, false, true, false, true, fals
 	settingButton,
 	mouseDown	= false,
 	mkey		= -1,
+	touchedKeys	= [],
 	pressedKeys	= [],
 	channel		= 1,
 	velocity	= 127,
@@ -52,6 +53,16 @@ var	isKeyFlat	= [false, true, false, true, false, false, true, false, true, fals
 	bind		= Jin.bind,
 	addClass	= Jin.addClass,
 	removeClass	= Jin.removeClass;
+
+function isIn(needle, haystack){
+	var i, l = haystack.length;
+	for (i=0; i<l; i++){
+		if (needle === haystack[i]){
+			return true;
+		}
+	}
+	return false;
+}
 
 function settings(){
 	if (localStorage.shadows){
@@ -123,7 +134,6 @@ function pitchBend(am){
 	var	firstByte	= Math.floor(pitchBendAmount / 128),
 		secondByte	= pitchBendAmount - firstByte * 128;
 	onmidievent(new MidiEvent(channel, 14, firstByte, secondByte));
-	
 }
 
 function release(num){
@@ -153,8 +163,25 @@ function mouseKeyPress(num){
 }
 
 function touching(e){
-	press(keys.indexOf(this));	
-	//for (var i=0; i<touches.length; i++)
+	if (e.preventDefault){
+		e.preventDefault();
+	}
+	var i, key, newTouches = [];
+	for (i=0; i < e.touches.length; i++){
+		key = keys.indexOf(e.touches[i].target);
+		newTouches[i] = key;
+	}
+	for (i=0; i < touchedKeys.length; i++){
+		if (!isIn(touchedKeys[i], newTouches)){
+			release(touchedKeys[i]);
+		}
+	}
+	for (i=0; i < newTouches.length; i++){
+		if (!isIn(newTouches[i], touchedKeys)){
+			press(newTouches[i]);
+		}
+	}
+	touchedKeys = newTouches;
 	// We're kinda doing nothing here, yet. Open to ideas.
 }
 
@@ -253,10 +280,8 @@ function doBindings(){
 		.bind('mouseout', function(e){
 			removeClass(this, 'hover');
 			mouseKeyPress(-1);
-		})
-		.bind('touchstart', touching)
-		.bind('touchmove', touching); // Well if these aren't messed up...
-	Jin(document)
+		});
+	Jin(document.documentElement)
 		.bind('mouseup', function(e) {
 			e.preventDefault();
 			mouseKeyPress(-1);
@@ -271,6 +296,10 @@ function doBindings(){
 			var left		= Math.max(Math.min((parseFloat(container.style.left) + e.delta * 50), 0), window.innerWidth - 3075);
 			container.style.left	= left+'px';
 		});
+	Jin(container)
+		.bind('touchstart', touching)
+		.bind('touchmove', touching) // Well if these aren't messed up...
+		.bind('touchfinish', touching);
 	bind(window, 'hashchange', updateArguments);
 	if (parent){
 		Jin(parent)
