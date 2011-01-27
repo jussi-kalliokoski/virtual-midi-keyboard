@@ -168,11 +168,43 @@
 		if (!type){
 			type = 'div'; // The probabilities are...
 		}
-		var elem = document.createElement(type);
+		var elem = document.createElement(type), prop;
 		if (id){
-			elem.id = id;
+			if (typeof id === 'object'){
+				for (prop in id){
+					if (id !== 'css'){ // This is just crazy, remove this if you're not just doing things to pass JSLint.
+						elem.setAttribute(x, id[prop]);
+					}
+				}
+				if (id.css){
+					extend(elem.style, id.css);
+				}
+			} else {
+				elem.id = id;
+			}
 		}
 		return elem;
+	}
+
+	function css(elem, property, value){
+		var	style = elem.style,
+			prop;
+		if (typeof property === 'object'){
+			for (prop in property){
+				if (prop[0] === '$'){
+					experimentalCss(elem, prop.substr(1), property[prop]);
+				} else {
+					style[prop] = property[prop];
+				}
+			}
+		} else if (value === undefined) {
+			return style[property];
+		}
+		if (property[0] === '$'){
+			experimentalCss(elem, property.substr(1), value);
+		} else {
+			style[property] = value;
+		}
 	}
 
 	function DOMReady(){
@@ -552,6 +584,7 @@
 	addModule('appendChildren', appendChildren);
 	addModule('bind', bind);
 	addModule('create', create);
+	addModule('css', css);
 	addModule('byCl', byCl);
 	addModule('byId', byId);
 	addModule('byTag', byTag);
@@ -639,6 +672,14 @@
 	layer.prototype.bind = function(a, b, c){
 		return this.each(function(){
 			return bind(this, a, b, c);
+		});
+	};
+	layer.prototype.css = function(a, b){
+		if (typeof a !== 'object' && !b){
+			return css(this[0], a);
+		}
+		return this.each(function(){
+			return css(this, a, b);
 		});
 	};
 	layer.prototype.unbind = function(a, b){

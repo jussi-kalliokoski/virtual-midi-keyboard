@@ -163,12 +163,12 @@ function mouseKeyPress(num){
 }
 
 function touching(e){
-	if (e.preventDefault){
-		e.preventDefault();
-	}
 	var i, key, newTouches = [];
 	for (i=0; i < e.touches.length; i++){
 		key = keys.indexOf(e.touches[i].target);
+		if (key === -1){
+			return;
+		}
 		newTouches[i] = key;
 	}
 	for (i=0; i < touchedKeys.length; i++){
@@ -182,7 +182,9 @@ function touching(e){
 		}
 	}
 	touchedKeys = newTouches;
-	// We're kinda doing nothing here, yet. Open to ideas.
+	if (e.preventDefault){
+		e.preventDefault();
+	}
 }
 
 function keyboardParamDown(num){
@@ -299,7 +301,7 @@ function doBindings(){
 	Jin(container)
 		.bind('touchstart', touching)
 		.bind('touchmove', touching) // Well if these aren't messed up...
-		.bind('touchfinish', touching);
+		.bind('touchend', touching);
 	bind(window, 'hashchange', updateArguments);
 	if (parent){
 		Jin(parent)
