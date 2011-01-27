@@ -14,3 +14,5 @@ b) or the iframe
 keyboard.onmidi = function(e){
 	// You got the idea
 };
+
+a live demo can be found at http://niiden.com/virtualmidikb/ or in use at http://niiden.com/jstmodular/
