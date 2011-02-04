@@ -157,6 +157,9 @@ function press(num){
 }
 
 function mouseKeyPress(num){
+	if (num === mkey){
+		return;
+	}
 	release(mkey);
 	mkey = num;
 	press(num);
