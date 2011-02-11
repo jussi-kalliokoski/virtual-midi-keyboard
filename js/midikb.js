@@ -1,10 +1,11 @@
-var onmidievent = function(e){
+var	onmidievent	= function(e){
 	if (parent && parent.onmidi){
 		parent.onmidi(e);
 	}
 };
 
 (function(window, Jin){
+
 var	isKeyFlat	= [false, true, false, true, false, false, true, false, true, false, true, false],
 	keyNames	= ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'],
 	keys		= new Jin.layer(),
@@ -45,6 +46,7 @@ var	isKeyFlat	= [false, true, false, true, false, false, true, false, true, fals
 	mkey		= -1,
 	touchedKeys	= [],
 	pressedKeys	= [],
+	availableDevs	= [],
 	channel		= 1,
 	velocity	= 127,
 	pitchBendAmount	= 8192,
@@ -77,12 +79,19 @@ function settings(){
 		localStorage.animation = !settings.noAnimation;
 	};
 	settings.open = function(){
-		var settingWindow = document.getElementById('settings'), sh, an;
-		if (settingWindow){
-			settingWindow.parentNode.removeChild(settingWindow);
-			settingWindow = null;
-			return;
+		var	settingWindow	= document.getElementById('settings'),
+			devSelect	= create('select'),
+			sh, an, elem, i,
+			l		= availableDevs.length;
+
+		for(i=0; i<l; i++){
+			elem = create('option', {
+				value: availableDevs[i].id
+			});
+			elem.innerHTML = availableDevs[i].device + ': ' + availableDevs[i].port;
+			devSelect.appendChild(elem);
 		}
+
 		settingWindow		= create();
 		settingWindow.id	= 'settings';
 		document.body.appendChild(settingWindow);
@@ -90,10 +99,18 @@ function settings(){
 		an = create('button');
 		sh.innerHTML = 'Toggle Shadows';
 		an.innerHTML = 'Toggle Animation';
-		Jin.appendChildren(settingWindow, sh, an);
+		Jin.appendChildren(settingWindow, sh, an, devSelect);
 		Jin.bind(sh, 'click', function(){ Jin.toggleClass(document.body, 'noShadows'); });
 		Jin.bind(an, 'click', function(){ Jin.toggleClass(document.body, 'noAnimation'); });
-		Jin.bind(settingWindow, 'click', settings.open);
+		Jin.bind(devSelect, 'change', function(){ window.talkToJava('midi-in', this.value); });
+		Jin.bind(settingWindow, 'click', function(e){
+			if (e.target !== settingWindow){
+				return;
+			}
+			settingWindow.parentNode.removeChild(settingWindow);
+			settingWindow = null;
+			return;
+		});
 	};
 }
 
@@ -136,24 +153,24 @@ function pitchBend(am){
 	onmidievent(new MidiEvent(channel, 14, firstByte, secondByte));
 }
 
-function release(num){
+function release(num, ch){
 	var i = pressedKeys.indexOf(num);
 	if (num < 0 || i === -1){
 		return;
 	}
 	pressedKeys.splice(i, 1);
 	keys.item(num).removeClass('pressed');
-	onmidievent(new MidiEvent(channel, 8, num, 0));
+	onmidievent(new MidiEvent(channel || ch, 8, num, 0));
 }
 
-function press(num){
+function press(num, ch, vel){
 	var i = pressedKeys.indexOf(num);
 	if (num < 0 || i !== -1){
 		return;
 	}
 	pressedKeys.push(num);
 	keys.item(num).addClass('pressed');
-	onmidievent(new MidiEvent(channel, 9, num, velocity));
+	onmidievent(new MidiEvent(ch || channel, 9, num, vel || velocity));
 }
 
 function mouseKeyPress(num){
@@ -313,6 +330,68 @@ function doBindings(){
 	}
 }
 
+function midiDeviceList(xml){
+	availableDevs = [];
+	xml.replace(/<device id='(.*)' type='(.*)' available='(.*)'><name><!\[CDATA\[(.*) \| (.*)\]\]><\/name><\/device>/g, function(xml, id, type, available, device, port){
+		if (type !== 'input'){
+			return;
+		}
+		availableDevs.push({
+			id: id,
+			type: type,
+			available: true,
+			device: device,
+			port: port
+		});
+	});
+}
+
+function midiDeviceMessage(xml){
+	var pf = parseFloat;
+	xml.replace(/<midi-data channel='(.*)' command='(.*)' status='(.*)' data1='(.*)' data2='(.*)' \/>/g, function(xml, channel, command, status, data1, data2){
+		channel	= pf(channel);
+		command	= pf(command);
+		status	= pf(status);
+		data1	= pf(data1);
+		data2	= pf(data2);
+		switch(command){
+			case 144:
+				press(data1, channel, data2);
+				break;
+			case 128:
+				release(data1, channel);
+				break;
+			default:
+				window.onmidi(new MidiEvent(channel, status, data1, data2));
+		}
+	});
+}
+
+function initJava(){
+	var appletObject = create('applet', {
+		name:		'midiApplet',
+		code:		'net.abumarkub.midi.applet.MidiApplet',
+		archive:	'jar/midiapplet.jar',
+		width:		'1',
+		height:		'1',
+		MAYSCRIPT:	''
+	}), talkToFlash = window.talkToFlash = function(command, params){ // These are used to hack in to the system of midijava, we don't actually use flash.
+		switch(command){
+			case 'midi-connection-started': // Connection OK, working, so get devices.
+				talkToJava('get-devices');
+				break;
+			case 'get-devices':
+				midiDeviceList(params);
+				break;
+			case 'midi-data': // It's sending us MIDI data, so let's process it and put it forward.
+				midiDeviceMessage(params);
+				break;
+		}
+	}, talkToJava = window.talkToJava = function(command, params){
+		appletObject.executeJavaMethod(command, params);
+	};
+}
+
 pressedKeys.indexOf = Jin.layer().indexOf; // Well, if Array.indexOf isn't there, I don't know if any use case fits anyway, but what the heck...
 
 remap();
@@ -326,6 +405,7 @@ Jin(function(){
 	createKeys();
 	doBindings();
 	updateArguments();
+	initJava();
 });
 
 }(window, Jin));

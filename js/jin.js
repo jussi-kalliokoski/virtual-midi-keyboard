@@ -45,15 +45,57 @@
 		//console.log('Added module '+name); // For debug
 	}
 
-	function appendChildren(parent){
-		var i;
-		if (isArrayish(arguments[1])){
-			for (i=0; i<arguments[1].length; i++){
-				parent.appendChild(arguments[1][i]);
+	function appendAfter(elem, nodes){
+		var parent = elem.parentNode, i;
+		if (isArrayish(nodes)){
+			for (i=0; i<nodes.length; i++){
+				parent.insertBefore(fixNode(nodes[i]), elem.nextSibling);
 			}
 		} else {
 			for (i=1; i<arguments.length; i++){
-				parent.appendChild(arguments[i]);
+				parent.insertBefore(fixNode(arguments[i]), elem.nextSibling);
+			}
+		}
+	}
+
+	function appendBefore(elem, nodes){
+		var parent = elem.parentNode, i;
+		if (isArrayish(nodes)){
+			for (i=0; i<nodes.length; i++){
+				parent.insertBefore(fixNode(nodes[i]), elem);
+			}
+		} else {
+			for (i=1; i<arguments.length; i++){
+				parent.insertBefore(fixNode(arguments[i]), elem);
+			}
+		}
+	}
+
+	function appendChildren(parent, nodes){
+		var i;
+		if (isArrayish(nodes)){
+			for (i=0; i<nodes.length; i++){
+				parent.appendChild(fixNode(nodes[i]));
+			}
+		} else {
+			for (i=1; i<arguments.length; i++){
+				parent.appendChild(fixNode(arguments[i]));
+			}
+		}
+	}
+
+	function attr(elem, a, val){
+		if (typeof a === 'string'){
+			if (arguments.length < 3){
+				elem.setAttribute(a, val);
+			}
+			return elem.getAttribute(a);
+		} else if (typeof a === 'object') {
+			var i;
+			for (i in a){
+				if (true){
+					elem.setAttribute(i, a[i]);
+				}
 			}
 		}
 	}
@@ -66,7 +108,7 @@
 			}
 			return;
 		}
-		elem = (elem === document && typeof elem['on'+type] === typeof Undefined) ? elem.documentElement : elem;
+		elem = (elem === document && isUndefined(elem['on'+type])) ? elem.documentElement : elem;
 		if (bind[type]){
 			return bind[type].bind(elem, type, func, pass);
 		}
@@ -92,7 +134,7 @@
 		if (!where){
 			where = document;
 		}
-		return where.getElementsByClassName(cl);
+		return collectByClass(cl, where);
 	}
 
 	function byId(id, where){
@@ -107,6 +149,13 @@
 			where = document;
 		}
 		return where.getElementsByTagName(tag);
+	}
+
+	function clone(elem, deep){
+		if (!deep){
+			deep = false;
+		}
+		return elem.cloneNode(deep);
 	}
 
 	function commandLine(){
@@ -167,13 +216,16 @@
 	function create(type, id){
 		if (!type){
 			type = 'div'; // The probabilities are...
+		} else if (typeof type === 'object' && !id) {
+			id = type;
+			type = 'div';
 		}
 		var elem = document.createElement(type), prop;
 		if (id){
 			if (typeof id === 'object'){
 				for (prop in id){
 					if (id !== 'css'){ // This is just crazy, remove this if you're not just doing things to pass JSLint.
-						elem.setAttribute(x, id[prop]);
+						elem.setAttribute(prop, id[prop]);
 					}
 				}
 				if (id.css){
@@ -197,7 +249,7 @@
 					style[prop] = property[prop];
 				}
 			}
-		} else if (value === undefined) {
+		} else if (isUndefined(value)) {
 			return style[property];
 		}
 		if (property[0] === '$'){
@@ -205,6 +257,38 @@
 		} else {
 			style[property] = value;
 		}
+	}
+
+	function dynamicCss(selector, properties){
+		var	elem	= create('style'),
+			css	= selector + '{',
+			prop, sprop;
+		function addProperty(propertyName, propertyValue){
+			css += propertyName + ':' + propertyValue + ';';
+		}
+		for (prop in properties){
+			if (properties.hasOwnProperty(prop)){
+				sprop = prop;
+				if (prop[0] === '$'){
+					sprop = prop.substr(1);
+					addProperty('-webkit-' + sprop, properties[prop]);
+					addProperty('-moz-' + sprop, properties[prop]);
+					addProperty('-o-' + sprop, properties[prop]);
+				}
+				addProperty(sprop, properties[prop]);
+			}
+		}
+		css += '}';
+		elem.innerHTML = css;
+		byTag('head')[0].appendChild(elem);
+		return elem;
+	}
+
+	function fixNode(node){
+		if (typeof node === 'string'){
+			node = document.createTextNode(node);
+		}
+		return node;
 	}
 
 	function DOMReady(){
@@ -253,7 +337,7 @@
 	}
 
 	function getElementsByClassName(elem, cl){
-		return elem.getElementsByClassName(cl);
+		return collectByClass(cl, elem);
 	}
 
 	function getElementsByTagName(elem, tg){
@@ -332,15 +416,30 @@
 		return true;
 	}
 
+	function html(elem, str){
+		if (arguments.length > 1){
+			elem.innerHTML = str;
+		}
+		return elem.innerHTML;
+	}
+
 	function isArray(obj){ // Are there faster / more reliable methods out there?
-		return !!(obj && obj.constructor === Array);
+		return !!(obj && (obj.isArray || obj.constructor === Array));
 	}
 
 	function isArrayish(obj){ // Same as isArray, but also accepts NodeList
-		return !!(obj && (obj.constructor === Array || obj.constructor === NodeList || obj.constructor === layer));
+		if (!obj){
+			return false;
+		}
+		var constructor = obj.constructor;
+		return constructor === Array || constructor === NodeList || constructor === StaticNodeList || constructor === layer;
 	}
 
-	function layer(){
+	function isUndefined(obj){
+		return typeof obj === 'undefined';
+	}
+
+	function layer(itemSet){
 		function Layer(){}
 		function setAlign(elem, pos)
 		{
@@ -348,9 +447,9 @@
 		}
 
 		var lr = [], i;
-		if (isArrayish(arguments[0])){
-			for (i=0; i<arguments[0].length; i++){
-				lr.push(arguments[0][i]);
+		if (isArrayish(itemSet)){
+			for (i=0; i<itemSet.length; i++){
+				lr.push(itemSet[i]);
 			}
 		} else {
 			for (i=0; i<arguments.length; i++){
@@ -451,6 +550,19 @@
 		ready.p.push(pd);
 	}
 
+	function prependChildren(parent, nodes){
+		var i, firstChild = parent.firstChild;
+		if (isArrayish(nodes)){
+			for (i=0; i<nodes.length; i++){
+				parent.insertBefore(fixNode(nodes[i]), firstChild);
+			}
+		} else {
+			for (i=1; i<arguments.length; i++){
+				parent.insertBefore(fixNode(arguments[i]), firstChild);
+			}
+		}
+	}
+
 	function ready(){
 		if (ready.triggered){
 			return;
@@ -491,6 +603,18 @@
 		for (i=0; i<cl.length; i++){
 			removeClass(elem, cl[i]);
 		}
+	}
+
+	function toArray(arr){
+		if (typeof arr === 'string'){
+			return [arr];
+		}
+		var	result	= [],
+			i, l	= arr.length;
+		for (i=0; i<l; i++){
+			result.push(arr[i]);
+		}
+		return result;
 	}
 
 	function toggleClass(elem, cls){ // Requires hasClass(), addClass() and removeClass()
@@ -560,8 +684,25 @@
 		}
 	}
 
-	function Jin(arg1, arg2){
-		return Jin.init(arg1, arg2);
+	function collectByClass(cl, element, tagName){
+		if (!tagName){
+			tagName = '*';
+		}
+		var	elems	= element.getElementsByTagName(tagName),
+			l	= elems.length,
+			result	= [],
+			elem, i;
+		for (i=0; i<l; i++){
+			elem = elems[i];
+			if (elem.className.indexOf(cl) > -1){
+				result.push(elem);
+			}
+		}
+		return result;
+	}
+
+	function Jin(){
+		return Jin.init.apply(this, arguments);
 	}
 
 	var
@@ -569,7 +710,30 @@
 		settings = {},
 		modules = {},
 		fn = {},
-		NodeList = NodeList || ((document.getElementsByClassName) ? document.getElementsByClassName('').constructor : Undefined);
+		NodeList = window.NodeList || ((document.getElementsByTagName) ? document.getElementsByTagName('').constructor : Undefined),
+		StaticNodeList = window.StaticNodeList || ((document.querySelectorAll) ? document.querySelectorAll('X').constructor : Undefined);
+
+	(function(){ // Check if we can collect classes with a faster method.
+		var testElement = document.createElement('div');
+		testElement.innerHTML = '<div class="t e"></div><div class=t></div>';
+		if (testElement.getElementsByClassName && testElement.getElementsByClassName('e').length){
+			testElement.lastChild.className = 'e';
+			if (testElement.getElementsByClassName('e').length === 2){
+				collectByClass = function(cl, element){
+					return element.getElementsByClassName(cl);
+				};
+			}
+		} else if (testElement.querySelectorAll) {
+			testElement.innerHTML = '<div class=T></div>';
+			if (testElement.querySelectorAll('.T').length){
+				collectByClass = function(cl, element){
+					return element.querySelectorAll('.' + cl);
+				};
+			}
+		}
+
+		testElement = null;
+	})();
 
 	fn.settings = settings;
 	fn.version = '0.2 Beta';
@@ -581,10 +745,15 @@
 	addModule('addClass', addClass);
 	addModule('addClasses', addClasses);
 	addModule('addModule', addModule);
+	addModule('appendAfter', appendAfter);
+	addModule('appendBefore', appendBefore);
 	addModule('appendChildren', appendChildren);
+	addModule('attr', attr);
 	addModule('bind', bind);
+	addModule('clone', clone);
 	addModule('create', create);
 	addModule('css', css);
+	addModule('dynamicCss', dynamicCss);
 	addModule('byCl', byCl);
 	addModule('byId', byId);
 	addModule('byTag', byTag);
@@ -597,10 +766,13 @@
 	addModule('getWindowSize', getWindowSize);
 	addModule('hasClass', hasClass);
 	addModule('hasClasses', hasClasses);
+	addModule('html', html);
 	addModule('isArray', isArray);
 	addModule('isArrayish', isArrayish);
+	addModule('isUndefined', isUndefined);
 	addModule('layer', layer);
 	addModule('onReady', onReady);
+	addModule('prependChildren', prependChildren);
 	addModule('removeClass', removeClass);
 	addModule('removeClasses', removeClasses);
 	addModule('toggleClass', toggleClass);
@@ -643,6 +815,65 @@
 
 	extend(Jin, fn);
 
+	layer.prototype.appendAfter = layer.prototype.after = function(a){
+		if (typeof a === 'string'){
+			return this.each(function(){
+				appendAfter(this, a);
+			});
+		}
+		var	args	= [this[0]],
+			i, l	= arguments.length;
+		for (i=0; i<l; i++){
+			args.push(arguments[i]);
+		}
+		appendAfter.apply(this[0], args);
+		return this;
+	}
+	layer.prototype.appendBefore = layer.prototype.before = function(a){
+		if (typeof a === 'string'){
+			return this.each(function(){
+				appendBefore(this, a);
+			});
+		}
+		var	args	= [this[0]],
+			i, l	= arguments.length;
+		for (i=0; i<l; i++){
+			args.push(arguments[i]);
+		}
+		appendBefore.apply(this[0], args);
+		return this;
+	}
+	layer.prototype.appendChildren = layer.prototype.append = function(){
+		var	args	= [this[0]],
+			i, l	= arguments.length;
+		for (i=0; i<l; i++){
+			args.push(arguments[i]);
+		}
+		appendChildren.apply(this[0], args);
+		return this;
+	};
+	layer.prototype.prependChildren = layer.prototype.prepend = function(){
+		var	args	= [this[0]],
+			i, l	= arguments.length;
+		for (i=0; i<l; i++){
+			args.push(arguments[i]);
+		}
+		prependChildren.apply(this[0], args);
+		return this;
+	};
+	layer.prototype.attr = function(a, b){
+		if (typeof a === 'string' && arguments.length < 2){
+			return attr(this[0], a);
+		}
+		return this.each(function(){
+			return attr(this, a, b);
+		});
+	};
+	layer.prototype.bind = function(a, b, c){
+		return this.each(function(){
+			return bind(this, a, b, c);
+		});
+	};
 	layer.prototype.byClass = function(cl) {
 		var lr = new layer();
 		this.each(function(){
@@ -663,16 +894,12 @@
 		});
 		return lr;
 	};
-	layer.prototype.appendChildren = function(){
-		for (i=0; i<arguments.length; i++){
-				appendChildren(this[0], arguments[i]);
-		}
-		return this;
-	};
-	layer.prototype.bind = function(a, b, c){
-		return this.each(function(){
-			return bind(this, a, b, c);
+	layer.prototype.clone = function(a){
+		var lr = new layer();
+		this.each(function(){
+			lr.push(clone(this, a));
 		});
+		return lr;
 	};
 	layer.prototype.css = function(a, b){
 		if (typeof a !== 'object' && !b){
@@ -726,6 +953,14 @@
 			}
 		});
 		return b;
+	};
+	layer.prototype.html = function(a){
+		if (!arguments.length){
+			return html(this[0]);
+		}
+		return this.each(function(){
+			html(this, a);
+		});
 	};
 	layer.prototype.addClass = function(a){
 		return this.each(function(){
