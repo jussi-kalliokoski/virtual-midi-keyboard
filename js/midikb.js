@@ -160,7 +160,7 @@ function release(num, ch){
 	}
 	pressedKeys.splice(i, 1);
 	keys.item(num).removeClass('pressed');
-	onmidievent(new MidiEvent(channel || ch, 8, num, 0));
+	onmidievent(new MidiEvent(ch || channel, 8, num, 0));
 }
 
 function press(num, ch, vel){
@@ -332,7 +332,7 @@ function doBindings(){
 
 function midiDeviceList(xml){
 	availableDevs = [];
-	xml.replace(/<device id='(.*)' type='(.*)' available='(.*)'><name><!\[CDATA\[(.*) \| (.*)\]\]><\/name><\/device>/g, function(xml, id, type, available, device, port){
+	xml.replace/<device id='([^']*)' type='([^']*)' available='([^']*)'><name><!\[CDATA\[([\w ]*) \| ([\w ]*)\]\]><\/name><\/device>/g, function(xml, id, type, available, device, port){
 		if (type !== 'input'){
 			return;
 		}
@@ -348,7 +348,7 @@ function midiDeviceList(xml){
 
 function midiDeviceMessage(xml){
 	var pf = parseFloat;
-	xml.replace(/<midi-data channel='(.*)' command='(.*)' status='(.*)' data1='(.*)' data2='(.*)' \/>/g, function(xml, channel, command, status, data1, data2){
+	xml.replace(/<midi-data channel='([^']*)' command='([^']*)' status='([^']*)' data1='([^']*)' data2='([^']*)' \/>/g, function(xml, channel, command, status, data1, data2){
 		channel	= pf(channel);
 		command	= pf(command);
 		status	= pf(status);
