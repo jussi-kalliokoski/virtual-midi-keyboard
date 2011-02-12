@@ -1,4 +1,3 @@
-
 body
 {
 	overflow: hidden;
@@ -13,6 +12,14 @@ body
 	-moz-transition: all 0.5s ease-in-out;
 	-o-transition: all 0.5s ease-in-out;
 	overflow: hidden;
+}
+
+applet
+{
+	position: absolute;
+	left: -1px;
+	top: 0px;
+	z-index: -100;
 }
 
 #settingButton, #settings

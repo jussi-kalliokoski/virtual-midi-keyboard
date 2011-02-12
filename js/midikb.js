@@ -394,7 +394,7 @@ function initJava(){
 	}, talkToJava = window.talkToJava = function(command, params){
 		appletObject.executeJavaMethod(command, params);
 	};
-	Jin.appendChildren(document.body, appletObject);
+	document.body.appendChild(appletObject);
 }
 
 pressedKeys.indexOf = Jin.layer().indexOf; // Well, if Array.indexOf isn't there, I don't know if any use case fits anyway, but what the heck...
