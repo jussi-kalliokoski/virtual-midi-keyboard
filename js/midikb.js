@@ -84,6 +84,10 @@ function settings(){
 			sh, an, elem, i,
 			l		= availableDevs.length;
 
+		elem = create('option', {value: 'N/A'});
+		elem.innerHTML = '&lt;select a device&gt;';
+		devSelect.appendChild(elem);
+		
 		for(i=0; i<l; i++){
 			elem = create('option', {
 				value: availableDevs[i].id
@@ -102,7 +106,7 @@ function settings(){
 		Jin.appendChildren(settingWindow, sh, an, devSelect);
 		Jin.bind(sh, 'click', function(){ Jin.toggleClass(document.body, 'noShadows'); });
 		Jin.bind(an, 'click', function(){ Jin.toggleClass(document.body, 'noAnimation'); });
-		Jin.bind(devSelect, 'change', function(){ window.talkToJava('midi-in', this.value); });
+		Jin.bind(devSelect, 'change', function(){ if(this.value !== 'N/A'){ window.talkToJava('midi-in', this.value); } });
 		Jin.bind(settingWindow, 'click', function(e){
 			if (e.target !== settingWindow){
 				return;
@@ -332,7 +336,7 @@ function doBindings(){
 
 function midiDeviceList(xml){
 	availableDevs = [];
-	xml.replace/<device id='([^']*)' type='([^']*)' available='([^']*)'><name><!\[CDATA\[([\w ]*) \| ([\w ]*)\]\]><\/name><\/device>/g, function(xml, id, type, available, device, port){
+	xml.replace(/<device id='([^']*)' type='([^']*)' available='([^']*)'><name><!\[CDATA\[([\w ]*) \| ([\w ]*)\]\]><\/name><\/device>/g, function(xml, id, type, available, device, port){
 		if (type !== 'input'){
 			return;
 		}
