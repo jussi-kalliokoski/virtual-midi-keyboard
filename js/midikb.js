@@ -42,6 +42,9 @@ var	isKeyFlat	= [false, true, false, true, false, false, true, false, true, fals
 	],
 	container,
 	settingButton,
+	keyboard,
+	pitchWheel,
+	modWheel,
 	mouseDown	= false,
 	mkey		= -1,
 	touchedKeys	= [],
@@ -152,9 +155,15 @@ function pitchBend(am){
 	if (pitchBendAmount < 0){
 		pitchBendAmount = 0;
 	}
+	pitchWheel.value = 1 - pitchBendAmount / 16383;
+}
+
+function setPitchBend(val){
+	pitchBendAmount = val * 16383;
 	var	firstByte	= Math.floor(pitchBendAmount / 128),
-		secondByte	= pitchBendAmount - firstByte * 128;
-	onmidievent(new MidiEvent(channel, 14, firstByte, secondByte));
+		secondByte	= Math.floor(pitchBendAmount - firstByte * 128),
+		midiEv		= new MidiEvent(channel, 14, firstByte, secondByte);
+	onmidievent(midiEv);
 }
 
 function release(num, ch){
@@ -256,7 +265,6 @@ function MidiEvent(channel, status, data1, data2){
 
 function createKeys(i){
 	for (i=0; i<128; i++){
-		//keys[i] = create(); // Won't contribute to length, as of Jin 0.2
 		keys.push(create());
 		keys[i].className = 'key ' + (isKeyFlat[i % 12] ? 'black' : 'white');
 		keys[i].title = keyNames[i % 12] + ' ' + Math.floor(i / 12);
@@ -266,16 +274,36 @@ function createKeys(i){
 }
 
 function defineElements(){
-	container = create();
-	container.id = 'keycontainer';
-	container.style.left = '-560px';
+	keyboard = create({
+		id: 'keyboard'
+	});
 
-	settingButton = create('button');
-	settingButton.id = 'settingButton';
-	settingButton.title = 'Settings';
-	settingButton.innerHTML = 'S';
+	container = create({
+		id: 'keycontainer',
+		css: {left: '-560px'}
+	});
 
-	Jin.appendChildren(document.body, container, settingButton);
+	settingButton = create('button', {
+		id: 'settingButton',
+		title: 'Settings',
+		html: 'Settings'
+	});
+
+	var sldOptions = {
+		direction: 'vertical',
+		width: 26,
+		height: 150
+	};
+
+	pitchWheel = Jin.slider(sldOptions);
+	modWheel = Jin.slider(sldOptions);
+	pitchWheel.dom.id = 'pitchWheel';
+	modWheel.dom.id = 'modWheel';
+
+	Jin.appendChildren(keyboard, container);
+	Jin.appendChildren(document.body, keyboard, settingButton, pitchWheel.dom, modWheel.dom);
+	pitchWheel.refresh();
+	modWheel.refresh();
 }
 
 function doBindings(){
@@ -317,21 +345,30 @@ function doBindings(){
 			mouseDown = true;
 		})
 		.bind('keydown', keyDown)
-		.bind('keyup', keyUp)
-		.bind('mousescroll', function(e) {
-			var left		= Math.max(Math.min((parseFloat(container.style.left) + e.delta * 50), 0), window.innerWidth - 3075);
-			container.style.left	= left+'px';
-		});
+		.bind('keyup', keyUp);
 	Jin(container)
 		.bind('touchstart', touching)
 		.bind('touchmove', touching) // Well if these aren't messed up...
-		.bind('touchend', touching);
+		.bind('touchend', touching)
+		.bind('mousescroll', function(e) {
+			var left		= Math.max(Math.min((parseFloat(container.style.left) + e.delta * 50), 0), keyboard.offsetWidth - 3075);
+			container.style.left	= left+'px';
+		});
 	bind(window, 'hashchange', updateArguments);
 	if (parent){
 		Jin(parent)
 			.bind('keydown', keyDown)
 			.bind('keyup', keyUp);
 	}
+
+	var oldMoveFinish = pitchWheel.onmovefinish;
+	pitchWheel.onmovefinish = function(){
+		oldMoveFinish.apply(this, arguments);
+		pitchWheel.value = 0.5;
+	};
+	pitchWheel.onchange = function(){
+		setPitchBend(1 - pitchWheel.value);
+	};
 }
 
 function midiDeviceList(xml){

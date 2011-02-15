@@ -1,17 +1,66 @@
 body
 {
 	overflow: hidden;
+	background-image: url(../img/bg.png);
 }
+
+.slider
+{
+	position: absolute;
+	top: 42px;
+	background-image: url(../img/stripe.png), -webkit-gradient(linear, left top, left bottom, color-stop(0.0, #000), color-stop(0.5, #aaa), color-stop(1.0, #000));
+	background-image: url(../img/stripe.png), -moz-linear-gradient(left bottom, #000 0%, #aaa 50%, #000 100%);
+	border: 1px inset #777;
+}
+
+.slider .pointer
+{
+	background-image: -webkit-gradient(linear, left top, right bottom, color-stop(0.0, rgba(50,50,50,.7)), color-stop(0.5, #777), color-stop(1.0, rgba(50,50,50,.7)));
+	background-image: -moz-linear-gradient(-45deg, rgba(50,50,50,.7) 0%, #777  50%, rgba(50,50,50,.7) 100%);
+	width: 32px;
+	height: 20px;
+	border-radius: 5px;
+	margin-left: -4px;
+	border: 1px outset #777;
+}
+
+#pitchWheel
+{
+	left: 5px;
+}
+
+#modWheel
+{
+	left: 40px;
+}
+
+#keyboard
+{
+	position: absolute;
+	left: 75px;
+	top: 42px;
+	width: 100%;
+	width: calc(100% - 75px);
+	width: -moz-calc(100% - 75px);
+	height: 152px;
+	overflow: hidden;
+	border: 1px inset #777;
+	background: #fff;
+}
+
 #keycontainer
 {
 	position: absolute;
 	top: 0px;
 	height: 152px;
+}
+
+#keycontainer, div.key
+{
 	transition: all 0.5s ease-in-out;
 	-webkit-transition: all 0.5s ease-in-out;
 	-moz-transition: all 0.5s ease-in-out;
 	-o-transition: all 0.5s ease-in-out;
-	overflow: hidden;
 }
 
 applet
@@ -27,18 +76,22 @@ applet
 	position: absolute;
 	left: 0px;
 	top: 0px;
-	width: 40px;
+	width: auto;
 	height: 40px;
 	background-color: rgba(0,0,0,0.7);
 	font-weight: bold;
 	font-size: 120%;
 	color: #fff;
+	border-color: black;
+	z-index: 3;
+}
+
+#settingButton, #settings, div.key, .slider
+{
 	box-shadow: 0px 0px 15px #000 inset;
 	-webkit-box-shadow: 0px 0px 15px #000 inset;
 	-moz-box-shadow: 0px 0px 15px #000 inset;
 	-o-box-shadow: 0px 0px 15px #000 inset;
-	border-color: black;
-	z-index: 3;
 }
 
 #settings
@@ -73,14 +126,6 @@ div.key
 	margin: 0px;
 	position: relative;
 	cursor: pointer;
-	box-shadow: 0px 0px 15px #000 inset;
-	-webkit-box-shadow: 0px 0px 15px #000 inset;
-	-moz-box-shadow: 0px 0px 15px #000 inset;
-	-o-box-shadow: 0px 0px 15px #000 inset;
-	transition: all 0.5s ease-in-out;
-	-webkit-transition: all 0.5s ease-in-out;
-	-moz-transition: all 0.5s ease-in-out;
-	-o-transition: all 0.5s ease-in-out;
 }
 
 .key.hover

@@ -224,12 +224,18 @@
 		if (id){
 			if (typeof id === 'object'){
 				for (prop in id){
-					if (id !== 'css'){ // This is just crazy, remove this if you're not just doing things to pass JSLint.
-						elem.setAttribute(prop, id[prop]);
+					if (id.hasOwnProperty(prop)){
+						switch(prop){
+							case 'css':
+								extend(elem.style, id[prop]);
+								break;
+							case 'html':
+								elem.innerHTML = id[prop];
+								break;
+							default:
+								elem.setAttribute(prop, id[prop]);
+						}
 					}
-				}
-				if (id.css){
-					extend(elem.style, id.css);
 				}
 			} else {
 				elem.id = id;
